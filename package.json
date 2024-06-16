@@ -9,12 +9,14 @@
   "private": true,
   "scripts": {
     "build": "yarn tsc",
-    "dev": "nodemon server.js"
+    "dev": "nodemon --env-file=.env server.js"
   },
   "devDependencies": {
     "@types/node": "^20.14.2"
   },
   "dependencies": {
+    "express": "^4.19.2",
+    "mongodb": "^6.7.0",
     "nodemon": "^3.1.3"
   }
 }
