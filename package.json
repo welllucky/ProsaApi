@@ -1,0 +1,20 @@
+{
+  "name": "books-api",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "repository": "https://github.com/welllucky/books-api",
+  "author": "Wellington Braga",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "build": "yarn tsc",
+    "dev": "nodemon server.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.2"
+  },
+  "dependencies": {
+    "nodemon": "^3.1.3"
+  }
+}
