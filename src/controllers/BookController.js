@@ -1,11 +1,25 @@
-import book from "../models/BookModel.js";
+import { author } from "../models/AuthorModel.js";
+import { book } from "../models/BookModel.js";
 
 class BookController {
   static async getBooks(req, res) {
+    let responseContent;
     try {
-      const bookList = await book.find();
+      const { query } = req;
+      const { title } = query;
 
-      res.status(200).json(bookList);
+      if (title) {
+        responseContent = await book.findOne({ title: title });
+      } else {
+        responseContent = await book.find();
+      }
+
+      if (!responseContent) {
+        res.status(204);
+        return;
+      }
+
+      res.status(200).json(responseContent);
     } catch (error) {
       res.status(500).send({
         message: `Não foi possivel encontrar os livros - ${error.message}`,
@@ -40,12 +54,36 @@ class BookController {
 
   static async updateBook(req, res) {
     try {
+      let newBookAuthor;
       const { params, body } = req;
       const { id } = params;
-      const { newBookTitle } = body;
+      const { authorId, title } = body;
+
+      const booksInDB = await book.findOne({
+        title: title,
+      });
+
+      if (authorId) {
+        newBookAuthor = await author.findById(authorId);
+      }
+
+      if (booksInDB) {
+        res.status(400).json({
+          message: "O livro mencionado não existe e não pode ser duplicado",
+        });
+        return;
+      }
+
+      if (!newBookAuthor) {
+        res.status(400).json({
+          message: "O Autor mencionado não existe",
+        });
+        return;
+      }
 
       const searchedItem = await book.findByIdAndUpdate(id, {
-        title: newBookTitle,
+        ...body,
+        author: { ...newBookAuthor },
       });
 
       if (!searchedItem) {
@@ -69,13 +107,12 @@ class BookController {
   static async addBook(req, res) {
     try {
       const { body } = req;
+      const { title, authorId } = body;
 
       if (!body)
         res
           .status(400)
           .send("É necessário adicionar um livro no body da requisição");
-
-      const { title } = body;
 
       if (typeof title !== "string" || !title) {
         res
@@ -84,6 +121,14 @@ class BookController {
         return;
       }
 
+      if (authorId && typeof authorId !== "string") {
+        res
+          .status(400)
+          .send("É necessário adicionar um id válido que referêncie um autor");
+        return;
+      }
+
+      const bookAuthor = await author.findById(authorId);
       const bookIsInDB = await book.findOne({
         title: body.title,
       });
@@ -98,12 +143,15 @@ class BookController {
 
       const newBook = new book({
         ...body,
+        author: { ...bookAuthor },
       });
 
       newBook.save({ validateBeforeSave: true });
 
-      res.status(201).json({
-        message: "Livro adicionado com sucesso!",
+      res.status(bookAuthor ? 201 : 206).json({
+        message: bookAuthor
+          ? "Livro adicionado com sucesso!"
+          : "O autor citado não existe, entretando o livro foi salvo com sucesso!",
         value: newBook,
       });
     } catch (error) {

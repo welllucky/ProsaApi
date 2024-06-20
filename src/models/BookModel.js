@@ -1,8 +1,9 @@
-import mongoose from "mongoose";
+import { Schema, Types, model } from "mongoose";
+import { AuthorSchema } from "./AuthorModel.js";
 
-const bookSchema = new mongoose.Schema(
+const BookSchema = new Schema(
   {
-    id: { type: mongoose.Schema.Types.ObjectId },
+    id: { type: Types.ObjectId },
     title: {
       type: String,
       required: true,
@@ -17,12 +18,13 @@ const bookSchema = new mongoose.Schema(
     page: {
       type: Number,
     },
+    author: AuthorSchema,
   },
   {
     versionKey: false,
   }
 );
 
-const book = mongoose.model("Books", bookSchema);
+const book = model("Books", BookSchema);
 
-export default book;
+export { BookSchema, book };
