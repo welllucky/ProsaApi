@@ -2,188 +2,187 @@ import { author } from "../models/AuthorModel.js";
 import { book } from "../models/BookModel.js";
 
 class BookController {
-  static async getBooks(req, res) {
-    let responseContent;
-    try {
-      const { query } = req;
-      const { title } = query;
+    static async getBooks(req, res) {
+        let responseContent;
+        try {
+            const { query } = req,
+                { title } = query;
 
-      if (title) {
-        responseContent = await book.findOne({ title: title });
-      } else {
-        responseContent = await book.find();
-      }
+            if (title) {
+                responseContent = await book.findOne({ title });
+            } else {
+                responseContent = await book.find();
+            }
 
-      if (!responseContent) {
-        res.status(204);
-        return;
-      }
+            if (!responseContent) {
+                res.status(204);
+                return;
+            }
 
-      res.status(200).json(responseContent);
-    } catch (error) {
-      res.status(500).send({
-        message: `Não foi possivel encontrar os livros - ${error.message}`,
-      });
+            res.status(200).json(responseContent);
+        } catch (error) {
+            res.status(500).send({
+                message: `Não foi possivel encontrar os livros - ${error.message}`,
+            });
+        }
     }
-  }
 
-  static async getBook(req, res) {
-    try {
-      const { params } = req;
-      const { id } = params;
+    static async getBook(req, res) {
+        try {
+            const { params } = req,
+                { id } = params,
+                searchedItem = await book.findById(id);
 
-      const searchedItem = await book.findById(id);
+            if (!searchedItem) {
+                res.status(404).send({
+                    message: "Livro não encontrado",
+                });
+                return;
+            }
 
-      if (!searchedItem) {
-        res.status(404).send({
-          message: "Livro não encontrado",
-        });
-        return;
-      }
-
-      res.status(200).send({
-        message: "Livro encontrado com sucesso!",
-        value: searchedItem,
-      });
-    } catch (error) {
-      res.status(500).send({
-        message: `Não foi possivel encontrar o livro - ${error.message}`,
-      });
+            res.status(200).send({
+                message: "Livro encontrado com sucesso!",
+                value: searchedItem,
+            });
+        } catch (error) {
+            res.status(500).send({
+                message: `Não foi possivel encontrar o livro - ${error.message}`,
+            });
+        }
     }
-  }
 
-  static async updateBook(req, res) {
-    try {
-      let newBookAuthor;
-      const { params, body } = req;
-      const { id } = params;
-      const { authorId, title } = body;
+    static async updateBook(req, res) {
+        try {
+            let newBookAuthor;
+            const { params, body } = req,
+                { id } = params,
+                { authorId, title } = body,
+                booksInDB = await book.findOne({
+                    title,
+                });
 
-      const booksInDB = await book.findOne({
-        title: title,
-      });
+            if (authorId) {
+                newBookAuthor = await author.findById(authorId);
+            }
 
-      if (authorId) {
-        newBookAuthor = await author.findById(authorId);
-      }
+            if (booksInDB) {
+                res.status(400).json({
+                    message:
+                        "O livro mencionado não existe e não pode ser duplicado",
+                });
+                return;
+            }
 
-      if (booksInDB) {
-        res.status(400).json({
-          message: "O livro mencionado não existe e não pode ser duplicado",
-        });
-        return;
-      }
+            if (!newBookAuthor) {
+                res.status(400).json({
+                    message: "O Autor mencionado não existe",
+                });
+                return;
+            }
 
-      if (!newBookAuthor) {
-        res.status(400).json({
-          message: "O Autor mencionado não existe",
-        });
-        return;
-      }
+            const searchedItem = await book.findByIdAndUpdate(id, {
+                ...body,
+                author: { ...newBookAuthor },
+            });
 
-      const searchedItem = await book.findByIdAndUpdate(id, {
-        ...body,
-        author: { ...newBookAuthor },
-      });
+            if (!searchedItem) {
+                res.status(404).json({
+                    message: "O livro mencionado não existe",
+                });
+                return;
+            }
 
-      if (!searchedItem) {
-        res.status(404).json({
-          message: "O livro mencionado não existe",
-        });
-        return;
-      }
-
-      res.status(201).json({
-        message: "Livro atualizado com sucesso!",
-        value: searchedItem,
-      });
-    } catch (error) {
-      res.status(500).json({
-        message: `Não foi possivel atualizar o livro - ${error}`,
-      });
+            res.status(201).json({
+                message: "Livro atualizado com sucesso!",
+                value: searchedItem,
+            });
+        } catch (error) {
+            res.status(500).json({
+                message: `Não foi possivel atualizar o livro - ${error}`,
+            });
+        }
     }
-  }
 
-  static async addBook(req, res) {
-    try {
-      const { body } = req;
-      const { title, authorId } = body;
+    static async addBook(req, res) {
+        try {
+            const { body } = req,
+                { title, authorId } = body;
 
-      if (!body)
-        res
-          .status(400)
-          .send("É necessário adicionar um livro no body da requisição");
+            if (!body)
+                res.status(400).send(
+                    "É necessário adicionar um livro no body da requisição",
+                );
 
-      if (typeof title !== "string" || !title) {
-        res
-          .status(400)
-          .send("É necessário adicionar um livro com um nome válido");
-        return;
-      }
+            if ("string" !== typeof title || !title) {
+                res.status(400).send(
+                    "É necessário adicionar um livro com um nome válido",
+                );
+                return;
+            }
 
-      if (authorId && typeof authorId !== "string") {
-        res
-          .status(400)
-          .send("É necessário adicionar um id válido que referêncie um autor");
-        return;
-      }
+            if (authorId && "string" !== typeof authorId) {
+                res.status(400).send(
+                    "É necessário adicionar um id válido que referêncie um autor",
+                );
+                return;
+            }
 
-      const bookAuthor = await author.findById(authorId);
-      const bookIsInDB = await book.findOne({
-        title: body.title,
-      });
+            const bookAuthor = await author.findById(authorId),
+                bookIsInDB = await book.findOne({
+                    title: body.title,
+                });
 
-      if (bookIsInDB) {
-        res.status(400).json({
-          messageError: "O livro já existe na base de dados",
-          data: bookIsInDB,
-        });
-        return;
-      }
+            if (bookIsInDB) {
+                res.status(400).json({
+                    data: bookIsInDB,
+                    messageError: "O livro já existe na base de dados",
+                });
+                return;
+            }
 
-      const newBook = new book({
-        ...body,
-        author: { ...bookAuthor },
-      });
+            const newBook = new book({
+                ...body,
+                author: { ...bookAuthor },
+            });
 
-      newBook.save({ validateBeforeSave: true });
+            newBook.save({ validateBeforeSave: true });
 
-      res.status(bookAuthor ? 201 : 206).json({
-        message: bookAuthor
-          ? "Livro adicionado com sucesso!"
-          : "O autor citado não existe, entretando o livro foi salvo com sucesso!",
-        value: newBook,
-      });
-    } catch (error) {
-      res.status(500).json({
-        message: `Não foi possível adicionar o livro - ${error.message}`,
-      });
+            res.status(bookAuthor ? 201 : 206).json({
+                message:
+                    bookAuthor ?
+                        "Livro adicionado com sucesso!"
+                    :   "O autor citado não existe, entretando o livro foi salvo com sucesso!",
+                value: newBook,
+            });
+        } catch (error) {
+            res.status(500).json({
+                message: `Não foi possível adicionar o livro - ${error.message}`,
+            });
+        }
     }
-  }
 
-  static async removeBook(req, res) {
-    try {
-      const { params } = req;
-      const { id } = params;
+    static async removeBook(req, res) {
+        try {
+            const { params } = req,
+                { id } = params,
+                searchedItem = await book.findByIdAndDelete(id);
 
-      const searchedItem = await book.findByIdAndDelete(id);
+            if (!searchedItem) {
+                res.status(404).json({
+                    message: "O livro mencionado não existe",
+                });
+                return;
+            }
 
-      if (!searchedItem) {
-        res.status(404).json({
-          message: "O livro mencionado não existe",
-        });
-        return;
-      }
-
-      res.status(200).json({
-        message: "O livro foi deletado com sucesso",
-        value: searchedItem,
-      });
-    } catch (error) {
-      res.status(500).json({
-        message: `Não foi possivel deletar o livro - ${error.message}`,
-      });
+            res.status(200).json({
+                message: "O livro foi deletado com sucesso",
+                value: searchedItem,
+            });
+        } catch (error) {
+            res.status(500).json({
+                message: `Não foi possivel deletar o livro - ${error.message}`,
+            });
+        }
     }
-  }
 }
 export default BookController;
