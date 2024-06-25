@@ -2,10 +2,13 @@ import { Schema, Types, model } from "mongoose";
 
 const AuthorSchema = new Schema(
     {
-        id: { type: Types.ObjectId },
-        name: { type: String, required: true },
-        age: { type: Number },
-        nationality: { type: String },
+        id: { type: Types.ObjectId, required: false },
+        name: {
+            type: String,
+            required: [true, "O nome do(a) autor(a) é obrigatório."],
+        },
+        nationality: { type: String, required: false },
+        age: { type: Number, required: false },
     },
     { versionKey: false },
 );

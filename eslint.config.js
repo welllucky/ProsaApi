@@ -4,13 +4,14 @@ import globals from "globals";
 
 export default [
     {
-        languageOptions: { globals: globals.browser },
+        languageOptions: {
+            globals: { ...globals.browser, ...globals.es2021, ...globals.node },
+        },
         rules: {
             "array-callback-return": ["error"],
             "arrow-body-style": ["error"],
             "block-scoped-var": ["error"],
             camelcase: ["error"],
-            "capitalized-comments": ["error"],
             "class-methods-use-this": ["error"],
             complexity: ["error"],
             "consistent-return": ["warn"],
@@ -34,10 +35,10 @@ export default [
             "max-classes-per-file": ["error"],
             "max-depth": ["error"],
             "max-lines": ["warn"],
-            "max-lines-per-function": ["warn"],
+            "max-lines-per-function": ["warn", { max: 100 }],
             "max-nested-callbacks": ["error"],
             "max-params": ["error", { max: 5 }],
-            "max-statements": ["warn"],
+            "max-statements": ["warn", { max: 30 }],
             // "new-cap": ["error"],
             "no-alert": ["error"],
             "no-array-constructor": ["error"],
@@ -110,7 +111,6 @@ export default [
             "no-multi-str": ["error"],
             "no-negated-condition": ["error"],
             "no-nested-ternary": ["error"],
-            "no-new": ["error"],
             "no-new-func": ["error"],
             "no-new-native-nonconstructor": ["error"],
             "no-new-wrappers": ["error"],
@@ -192,14 +192,6 @@ export default [
             "require-await": ["warn"],
             "require-unicode-regexp": ["error"],
             "require-yield": ["error"],
-            "sort-keys": [
-                "warn",
-                "asc",
-                {
-                    caseSensitive: true,
-                    natural: false,
-                },
-            ],
             "sort-vars": ["warn"],
             strict: ["error"],
             "symbol-description": ["error"],
@@ -207,7 +199,6 @@ export default [
             "use-isnan": ["error"],
             "valid-typeof": ["error"],
             "vars-on-top": ["warn"],
-            yoda: ["warn", "always"],
         },
     },
     pluginJs.configs.recommended,

@@ -1,81 +1,85 @@
 import { author } from "../models/AuthorModel.js";
 import { book } from "../models/BookModel.js";
+import { NotFoundError } from "../utils/errors/NotFound.js";
+import { code } from "../utils/statusCode.js";
+import { authorValidator } from "../validators/authorValidator.js";
+import { bookValidator } from "../validators/bookValidator.js";
 
 class BookController {
-    static async getBooks(req, res) {
-        let responseContent;
+    static async getBooks(req, res, next) {
+        let responseContent = {};
         try {
             const { query } = req,
                 { title } = query;
 
             if (title) {
+                bookValidator.shape.title.parse(title);
                 responseContent = await book.findOne({ title });
             } else {
                 responseContent = await book.find();
             }
 
             if (!responseContent) {
-                res.status(204);
+                new NotFoundError().send(res);
                 return;
             }
 
-            res.status(200).json(responseContent);
+            res.status(code.responseSuccessfully).json(responseContent);
         } catch (error) {
-            res.status(500).send({
-                message: `Não foi possivel encontrar os livros - ${error.message}`,
-            });
+            next(error);
         }
     }
 
-    static async getBook(req, res) {
+    static async getBook(req, res, next) {
         try {
             const { params } = req,
                 { id } = params,
                 searchedItem = await book.findById(id);
 
             if (!searchedItem) {
-                res.status(404).send({
-                    message: "Livro não encontrado",
-                });
+                new NotFoundError("Livro não encontrado").send(res);
+
                 return;
             }
 
-            res.status(200).send({
+            res.status(code.responseSuccessfully).send({
                 message: "Livro encontrado com sucesso!",
                 value: searchedItem,
             });
         } catch (error) {
-            res.status(500).send({
-                message: `Não foi possivel encontrar o livro - ${error.message}`,
-            });
+            next(error);
         }
     }
 
-    static async updateBook(req, res) {
+    static async updateBook(req, res, next) {
         try {
-            let newBookAuthor;
+            let newBookAuthor = {};
             const { params, body } = req,
                 { id } = params,
                 { authorId, title } = body,
-                booksInDB = await book.findOne({
+                booksInDB = await book.exists({
                     title,
                 });
 
-            if (authorId) {
+            if (!authorValidator.shape.id.safeParse(authorId).success) {
                 newBookAuthor = await author.findById(authorId);
+                if (newBookAuthor) {
+                    new NotFoundError("O Autor mencionado não existe").send(
+                        res,
+                    );
+
+                    return;
+                }
             }
 
             if (booksInDB) {
-                res.status(400).json({
+                res.status(code.notAcceptable).json({
                     message:
-                        "O livro mencionado não existe e não pode ser duplicado",
-                });
-                return;
-            }
-
-            if (!newBookAuthor) {
-                res.status(400).json({
-                    message: "O Autor mencionado não existe",
+                        "O título mencionado já existe e não pode ser duplicado.",
+                    data: {
+                        // eslint-disable-next-line no-underscore-dangle
+                        id: booksInDB._id,
+                    },
                 });
                 return;
             }
@@ -86,42 +90,38 @@ class BookController {
             });
 
             if (!searchedItem) {
-                res.status(404).json({
-                    message: "O livro mencionado não existe",
-                });
+                new NotFoundError("O livro mencionado não existe").send(res);
                 return;
             }
 
-            res.status(201).json({
+            res.status(code.resourceCreated).json({
                 message: "Livro atualizado com sucesso!",
                 value: searchedItem,
             });
         } catch (error) {
-            res.status(500).json({
-                message: `Não foi possivel atualizar o livro - ${error}`,
-            });
+            next(error);
         }
     }
 
-    static async addBook(req, res) {
+    static async addBook(req, res, next) {
         try {
             const { body } = req,
                 { title, authorId } = body;
 
             if (!body)
-                res.status(400).send(
+                res.status(code.badRequest).send(
                     "É necessário adicionar um livro no body da requisição",
                 );
 
             if ("string" !== typeof title || !title) {
-                res.status(400).send(
+                res.status(code.badRequest).send(
                     "É necessário adicionar um livro com um nome válido",
                 );
                 return;
             }
 
             if (authorId && "string" !== typeof authorId) {
-                res.status(400).send(
+                res.status(code.badRequest).send(
                     "É necessário adicionar um id válido que referêncie um autor",
                 );
                 return;
@@ -133,7 +133,7 @@ class BookController {
                 });
 
             if (bookIsInDB) {
-                res.status(400).json({
+                res.status(code.badRequest).json({
                     data: bookIsInDB,
                     messageError: "O livro já existe na base de dados",
                 });
@@ -145,9 +145,11 @@ class BookController {
                 author: { ...bookAuthor },
             });
 
-            newBook.save({ validateBeforeSave: true });
+            await newBook.save({ validateBeforeSave: true });
 
-            res.status(bookAuthor ? 201 : 206).json({
+            res.status(
+                bookAuthor ? code.resourceCreated : code.partialContent,
+            ).json({
                 message:
                     bookAuthor ?
                         "Livro adicionado com sucesso!"
@@ -155,33 +157,29 @@ class BookController {
                 value: newBook,
             });
         } catch (error) {
-            res.status(500).json({
-                message: `Não foi possível adicionar o livro - ${error.message}`,
-            });
+            next(error);
         }
     }
 
-    static async removeBook(req, res) {
+    static async removeBook(req, res, next) {
         try {
             const { params } = req,
                 { id } = params,
                 searchedItem = await book.findByIdAndDelete(id);
 
             if (!searchedItem) {
-                res.status(404).json({
+                res.status(code.notFound).json({
                     message: "O livro mencionado não existe",
                 });
                 return;
             }
 
-            res.status(200).json({
+            res.status(code.noContent).json({
                 message: "O livro foi deletado com sucesso",
                 value: searchedItem,
             });
         } catch (error) {
-            res.status(500).json({
-                message: `Não foi possivel deletar o livro - ${error.message}`,
-            });
+            next(error);
         }
     }
 }

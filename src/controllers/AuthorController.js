@@ -1,8 +1,12 @@
 import { author } from "../models/AuthorModel.js";
+import { BadRequest } from "../utils/errors/BadRequest.js";
+import { ResourceNotFound } from "../utils/errors/ResourceNotFound.js";
+import { code } from "../utils/statusCode.js";
+import { authorValidator } from "../validators/authorValidator.js";
 
 class AuthorController {
-    static async getAuthors(req, res) {
-        let responseContent;
+    static async getAuthors(req, res, next) {
+        let responseContent = {};
         try {
             const { query } = req;
             const { name } = query;
@@ -14,19 +18,17 @@ class AuthorController {
             }
 
             if (!responseContent) {
-                res.status(204);
+                new ResourceNotFound().send(res);
                 return;
             }
 
-            res.status(200).json(responseContent);
+            res.status(code.responseSuccessfully).json(responseContent);
         } catch (error) {
-            res.status(500).send({
-                message: `Não foi possivel encontrar os autores - ${error.message}`,
-            });
+            next(error);
         }
     }
 
-    static async getAuthor(req, res) {
+    static async getAuthor(req, res, next) {
         try {
             const { params } = req;
             const { id } = params;
@@ -34,75 +36,58 @@ class AuthorController {
             const searchedItem = await author.findById(id);
 
             if (!searchedItem) {
-                res.status(404).send({
+                res.status(code.notFound).send({
                     message: "Autor não encontrado",
                 });
                 return;
             }
 
-            res.status(200).send({
+            res.status(code.responseSuccessfully).send({
                 message: "Autor encontrado com sucesso!",
-                value: searchedItem,
+                data: searchedItem,
             });
         } catch (error) {
-            res.status(500).send({
-                message: `Não foi possivel encontrar o Autor - ${error.message}`,
-            });
+            next(error);
         }
     }
 
-    static async updateAuthor(req, res) {
+    static async updateAuthor(req, res, next) {
         try {
             const { params, body } = req;
             const { id } = params;
 
             const searchedItem = await author.findByIdAndUpdate(id, body);
 
+            authorValidator.parse(body);
+
             if (!searchedItem) {
-                res.status(404).json({
+                res.status(code.notFound).json({
                     message: "O Autor mencionado não existe",
                 });
                 return;
             }
 
-            res.status(201).json({
+            res.status(code.resourceCreated).json({
                 message: "Autor atualizado com sucesso!",
-                value: searchedItem,
+                data: searchedItem,
             });
         } catch (error) {
-            res.status(500).json({
-                message: `Não foi possivel atualizar o Autor - ${error}`,
-            });
+            next(error);
         }
     }
 
-    static async addAuthor(req, res) {
+    static async addAuthor(req, res, next) {
         try {
             const { body } = req;
 
-            if (!body)
-                res.status(400).send(
-                    "É necessário adicionar um Autor no body da requisição",
-                );
-
-            const { name } = body;
-
-            if ("string" !== typeof name || !name) {
-                res.status(400).send(
-                    "É necessário adicionar um Autor com um nome válido",
-                );
-                return;
-            }
+            authorValidator.parse(body);
 
             const AuthorIsInDB = await author.findOne({
                 name: body.name,
             });
 
             if (AuthorIsInDB) {
-                res.status(400).json({
-                    messageError: "O Autor já existe na base de dados",
-                    data: AuthorIsInDB,
-                });
+                new BadRequest("O Autor já existe na base de dados").send(res);
                 return;
             }
 
@@ -110,41 +95,46 @@ class AuthorController {
                 ...body,
             });
 
-            newAuthor.save({ validateBeforeSave: true });
+            await newAuthor.save({ validateBeforeSave: true });
 
-            res.status(201).json({
+            res.status(code.resourceCreated).json({
                 message: "Autor adicionado com sucesso!",
-                value: newAuthor,
+                data: newAuthor,
             });
         } catch (error) {
-            res.status(500).json({
-                message: `Não foi possível adicionar o Autor - ${error.message}`,
-            });
+            next(error);
         }
     }
 
-    static async removeAuthor(req, res) {
+    static async removeAuthor(req, res, next) {
         try {
             const { params } = req;
             const { id } = params;
 
             const searchedItem = await author.findByIdAndDelete(id);
 
+            console.log({ id });
+
+            // eslint-disable-next-line no-undefined
+            // if (params) {
+            //     BadRequest(
+            //         "É obrigátorio enviar o parâmetro id para a exclusão do autor(a)",
+            //     ).send(res);
+            // }
+
             if (!searchedItem) {
-                res.status(404).json({
+                res.status(code.notFound).json({
                     message: "O Autor mencionado não existe",
                 });
                 return;
             }
 
-            res.status(200).json({
+            res.status(code.responseSuccessfully).json({
                 message: "O Autor foi deletado com sucesso",
-                value: searchedItem,
+                data: searchedItem,
             });
         } catch (error) {
-            res.status(500).json({
-                message: `Não foi possivel deletar o Autor - ${error.message}`,
-            });
+            next(error);
         }
     }
 }
