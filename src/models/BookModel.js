@@ -20,7 +20,11 @@ const BookSchema = new Schema(
         },
         page: {
             type: Number,
-            default: 1,
+            min: [
+                // eslint-disable-next-line no-magic-numbers
+                10,
+                "O número de páginas de um livro deve ser igual ou maior que 10",
+            ],
         },
         author: AuthorSchema,
     },
