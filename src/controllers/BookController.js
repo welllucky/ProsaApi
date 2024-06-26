@@ -1,5 +1,6 @@
 import { author } from "../models/AuthorModel.js";
 import { book } from "../models/BookModel.js";
+import { BadRequest } from "../utils/errors/BadRequest.js";
 import { NotFoundError } from "../utils/errors/NotFound.js";
 import { code } from "../utils/statusCode.js";
 import { authorValidator } from "../validators/authorValidator.js";
@@ -177,6 +178,62 @@ class BookController {
             res.status(code.noContent).json({
                 message: "O livro foi deletado com sucesso",
                 value: searchedItem,
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    static async search(req, res, next) {
+        try {
+            const { query } = req;
+            const { publisher, title, minPages, maxPages } = query;
+
+            if (!Object.keys(query).length) {
+                new BadRequest(
+                    "Nenhum seletor utilizado na consulta: [publisher, title]",
+                ).send(res);
+                return;
+            }
+
+            const terms = {
+                ...(title && {
+                    title: new RegExp(
+                        bookValidator.shape.title.parse(title),
+                        "iu",
+                    ),
+                }),
+                ...(publisher && {
+                    publisher: bookValidator.shape.publisher.parse(publisher),
+                }),
+                ...((minPages || maxPages) && {
+                    page: {
+                        ...(maxPages && { $gte: maxPages }),
+                        ...(minPages && { $lte: minPages }),
+                    },
+                }),
+            };
+
+            const searchedContent = await book.find(terms);
+
+            if (!searchedContent.length) {
+                let errorMessage = "";
+
+                if (publisher && title) {
+                    errorMessage = `Não foi possível encontrar o livro ${title} pertencente a editora ${publisher}`;
+                } else if (publisher) {
+                    errorMessage = `A editora citada ${publisher} não existe`;
+                } else {
+                    errorMessage = `O livro citado ${title} não existe`;
+                }
+
+                new NotFoundError(errorMessage).send(res);
+                return;
+            }
+
+            res.status(code.responseSuccessfully).json({
+                message: "Livro(s) encontrados com sucesso!",
+                data: searchedContent,
             });
         } catch (error) {
             next(error);
