@@ -1,9 +1,9 @@
 {
-    "name": "books-api",
+    "name": "prosaApi",
     "version": "1.0.0",
     "main": "server.js",
     "type": "module",
-    "repository": "https://github.com/welllucky/books-api",
+    "repository": "https://github.com/welllucky/prosaApi",
     "author": "Wellington Braga",
     "license": "MIT",
     "private": true,
