@@ -11,6 +11,7 @@ class ErrorBase extends Error {
     }
 
     send(res) {
+        console.log(this.error);
         res.status(this.status).json({
             message: this.message,
             error: this.error,

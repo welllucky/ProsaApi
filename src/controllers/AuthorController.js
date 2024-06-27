@@ -11,7 +11,7 @@ class AuthorController {
             const { query } = req;
             const name = new RegExp(query.name, "ui");
 
-            if (name) {
+            if (Object.keys(query).length) {
                 responseContent = await author.findOne({ name });
             } else {
                 responseContent = await author.find();
