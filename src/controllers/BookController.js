@@ -1,10 +1,11 @@
-import { author } from "../models/AuthorModel.js";
-import { book } from "../models/BookModel.js";
-import { BadRequest } from "../utils/errors/BadRequest.js";
-import { NotFoundError } from "../utils/errors/NotFound.js";
-import { code } from "../utils/statusCode.js";
-import { authorValidator } from "../validators/authorValidator.js";
-import { bookValidator } from "../validators/bookValidator.js";
+import { author, book } from "../models/index.js";
+import {
+    BadRequest,
+    NotFoundError,
+    code,
+    getFilterObject,
+} from "../utils/index.js";
+import { authorValidator, bookValidator } from "../validators/index.js";
 
 class BookController {
     static async getBooks(req, res, next) {
@@ -39,7 +40,6 @@ class BookController {
 
             if (!searchedItem) {
                 new NotFoundError("Livro não encontrado").send(res);
-
                 return;
             }
 
@@ -57,10 +57,11 @@ class BookController {
             let newBookAuthor = {};
             const { params, body } = req,
                 { id } = params,
-                { authorId, title } = body,
-                booksInDB = await book.exists({
-                    title,
-                });
+                { authorId, title } = body;
+
+            const booksInDB = await book.exists({
+                title,
+            });
 
             if (!authorValidator.shape.id.safeParse(authorId).success) {
                 newBookAuthor = await author.findById(authorId);
@@ -68,7 +69,6 @@ class BookController {
                     new NotFoundError("O Autor mencionado não existe").send(
                         res,
                     );
-
                     return;
                 }
             }
@@ -106,32 +106,19 @@ class BookController {
 
     static async addBook(req, res, next) {
         try {
-            const { body } = req,
-                { title, authorId } = body;
+            const { body } = req;
 
             if (!body)
                 res.status(code.badRequest).send(
                     "É necessário adicionar um livro no body da requisição",
                 );
 
-            if ("string" !== typeof title || !title) {
-                res.status(code.badRequest).send(
-                    "É necessário adicionar um livro com um nome válido",
-                );
-                return;
-            }
+            bookValidator.parse(body);
 
-            if (authorId && "string" !== typeof authorId) {
-                res.status(code.badRequest).send(
-                    "É necessário adicionar um id válido que referêncie um autor",
-                );
-                return;
-            }
-
-            const bookAuthor = await author.findById(authorId),
-                bookIsInDB = await book.findOne({
-                    title: body.title,
-                });
+            const bookAuthor = await author.findById(body.authorId);
+            const bookIsInDB = await book.findOne({
+                title: body.title,
+            });
 
             if (bookIsInDB) {
                 res.status(code.badRequest).json({
@@ -187,47 +174,22 @@ class BookController {
     static async search(req, res, next) {
         try {
             const { query } = req;
-            const { publisher, title, minPages, maxPages } = query;
 
             if (!Object.keys(query).length) {
-                new BadRequest(
-                    "Nenhum seletor utilizado na consulta: [publisher, title]",
-                ).send(res);
+                new BadRequest("Nenhum seletor utilizado na consulta.").send(
+                    res,
+                );
                 return;
             }
 
-            const terms = {
-                ...(title && {
-                    title: new RegExp(
-                        bookValidator.shape.title.parse(title),
-                        "iu",
-                    ),
-                }),
-                ...(publisher && {
-                    publisher: bookValidator.shape.publisher.parse(publisher),
-                }),
-                ...((minPages || maxPages) && {
-                    page: {
-                        ...(maxPages && { $gte: maxPages }),
-                        ...(minPages && { $lte: minPages }),
-                    },
-                }),
-            };
+            const terms = getFilterObject("book", bookValidator, query);
 
             const searchedContent = await book.find(terms);
 
             if (!searchedContent.length) {
-                let errorMessage = "";
-
-                if (publisher && title) {
-                    errorMessage = `Não foi possível encontrar o livro ${title} pertencente a editora ${publisher}`;
-                } else if (publisher) {
-                    errorMessage = `A editora citada ${publisher} não existe`;
-                } else {
-                    errorMessage = `O livro citado ${title} não existe`;
-                }
-
-                new NotFoundError(errorMessage).send(res);
+                new NotFoundError("Sem resultados para a consulta atual!").send(
+                    res,
+                );
                 return;
             }
 

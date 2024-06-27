@@ -113,15 +113,6 @@ class AuthorController {
 
             const searchedItem = await author.findByIdAndDelete(id);
 
-            console.log({ id });
-
-            // eslint-disable-next-line no-undefined
-            // if (params) {
-            //     BadRequest(
-            //         "É obrigátorio enviar o parâmetro id para a exclusão do autor(a)",
-            //     ).send(res);
-            // }
-
             if (!searchedItem) {
                 res.status(code.notFound).json({
                     message: "O Autor mencionado não existe",
