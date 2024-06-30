@@ -39,6 +39,14 @@ export const getFilterObject = (model, validator, params) => {
                         }),
                     },
                 }),
+
+            ...(params.authorName && {
+                author: {
+                    ...(params.authorName && {
+                        name: new RegExp(params.authorName, "ui"),
+                    }),
+                },
+            }),
         };
 
     return terms;

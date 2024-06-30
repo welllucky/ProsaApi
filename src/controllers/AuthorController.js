@@ -56,9 +56,11 @@ class AuthorController {
             const { params, body } = req;
             const { id } = params;
 
-            const searchedItem = await author.findByIdAndUpdate(id, body);
+            Object.keys(body).forEach((key) => {
+                authorValidator.shape[key].parse(body[key]);
+            });
 
-            authorValidator.parse(body);
+            const searchedItem = await author.findByIdAndUpdate(id, body);
 
             if (!searchedItem) {
                 res.status(code.notFound).json({

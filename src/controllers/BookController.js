@@ -56,16 +56,18 @@ class BookController {
         try {
             let newBookAuthor = {};
             const { params, body } = req,
-                { id } = params,
-                { authorId, title } = body;
+                { id } = params;
 
             const booksInDB = await book.exists({
-                title,
+                title: body?.title,
             });
 
-            if (!authorValidator.shape.id.safeParse(authorId).success) {
-                newBookAuthor = await author.findById(authorId);
-                if (newBookAuthor) {
+            if (
+                body.authorId &&
+                authorValidator.shape.id.safeParse(body.authorId).success
+            ) {
+                newBookAuthor = await author.findById(body.authorId);
+                if (!newBookAuthor) {
                     new NotFoundError("O Autor mencionado não existe").send(
                         res,
                     );
@@ -87,7 +89,7 @@ class BookController {
 
             const searchedItem = await book.findByIdAndUpdate(id, {
                 ...body,
-                author: { ...newBookAuthor },
+                ...(newBookAuthor && { author: newBookAuthor }),
             });
 
             if (!searchedItem) {
@@ -113,7 +115,7 @@ class BookController {
                     "É necessário adicionar um livro no body da requisição",
                 );
 
-            bookValidator.parse(body);
+            // bookValidator.parse(body);
 
             const bookAuthor = await author.findById(body.authorId);
             const bookIsInDB = await book.findOne({

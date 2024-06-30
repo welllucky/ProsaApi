@@ -70,5 +70,12 @@ export const errorMiddleware = (error, req, res, next) => {
         return;
     }
 
+    if (error instanceof TypeError) {
+        new ErrorBase(
+            "Foi passado um ou mais parâmetros inválidos, por favor verifique o body da requisição e tente novamente",
+        ).send(res);
+        return;
+    }
+
     new ErrorBase().send(res);
 };
